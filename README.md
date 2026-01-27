@@ -63,6 +63,9 @@ f -e zip -x unzip
 f config -- --owner john
 ```
 
+Note: if your pattern contains shell glob characters (`*`, `?`, `[]`), quote it
+in shells like bash/zsh so it reaches `f` unchanged (example: `f '*.toml'`).
+
 ## Flags
 
 ```
@@ -114,4 +117,4 @@ format details.
 
 ## License
 
-MIT — https://github.com/sharkdp/fd/blob/master/LICENSE-MIT
+MIT (see `LICENSE.txt`).

@@ -1,6 +1,6 @@
 #!/bin/bash
 # f - fd wrapper with convenient defaults
-# License: MIT — https://github.com/sharkdp/fd/blob/master/LICENSE-MIT
+# License: MIT (see LICENSE.txt)
 
 fd_dbg="${F_FD_DBG:-}"
 

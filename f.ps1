@@ -1,5 +1,5 @@
 # f.ps1 - fd wrapper with convenient defaults (PowerShell 7+ port)
-# License: MIT — https://github.com/sharkdp/fd/blob/master/LICENSE-MIT
+# License: MIT (see LICENSE.txt)
 # Manual arg parsing because PowerShell params are case-insensitive.
 
 $ErrorActionPreference = 'Stop'
