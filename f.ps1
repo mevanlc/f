@@ -392,10 +392,18 @@ $paths = if ($positional.Count -gt 1) { $positional[1..($positional.Count - 1)] 
 if ($fixed_strings) {
     $searchPattern = $pattern
 } elseif (-not $use_regex) {
-    $searchPattern = switch ($matchMode) {
-        1 { "**/$pattern" }
-        2 { "**/*$pattern" }
-        default { "**/*$pattern*" }
+    if ($basename_only) {
+        $searchPattern = switch ($matchMode) {
+            1 { $pattern }
+            2 { "*$pattern" }
+            default { "*$pattern*" }
+        }
+    } else {
+        $searchPattern = switch ($matchMode) {
+            1 { "**/$pattern" }
+            2 { "**/*$pattern" }
+            default { "**/*$pattern*" }
+        }
     }
 } else {
     $searchPattern = switch ($matchMode) {
@@ -410,10 +418,18 @@ foreach ($ap in $and_patterns) {
     if ($fixed_strings) {
         $apPat = $ap
     } elseif (-not $use_regex) {
-        $apPat = switch ($matchMode) {
-            1 { "**/$ap" }
-            2 { "**/*$ap" }
-            default { "**/*$ap*" }
+        if ($basename_only) {
+            $apPat = switch ($matchMode) {
+                1 { $ap }
+                2 { "*$ap" }
+                default { "*$ap*" }
+            }
+        } else {
+            $apPat = switch ($matchMode) {
+                1 { "**/$ap" }
+                2 { "**/*$ap" }
+                default { "**/*$ap*" }
+            }
         }
     } else {
         $apPat = switch ($matchMode) {

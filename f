@@ -348,11 +348,19 @@ if [ $fixed_strings -eq 1 ]; then
     search_pattern="$pattern"
 elif [ $use_regex -eq 0 ]; then
     # Glob mode
-    case $match_mode in
-        1) search_pattern="**/$pattern" ;;
-        2) search_pattern="**/*$pattern" ;;
-        *) search_pattern="**/*$pattern*" ;;
-    esac
+    if [ $basename_only -eq 1 ]; then
+        case $match_mode in
+            1) search_pattern="$pattern" ;;
+            2) search_pattern="*$pattern" ;;
+            *) search_pattern="*$pattern*" ;;
+        esac
+    else
+        case $match_mode in
+            1) search_pattern="**/$pattern" ;;
+            2) search_pattern="**/*$pattern" ;;
+            *) search_pattern="**/*$pattern*" ;;
+        esac
+    fi
 else
     # Regex mode
     case $match_mode in
@@ -367,11 +375,19 @@ for ap in "${and_patterns[@]}"; do
     if [ $fixed_strings -eq 1 ]; then
         ap_pat="$ap"
     elif [ $use_regex -eq 0 ]; then
-        case $match_mode in
-            1) ap_pat="**/$ap" ;;
-            2) ap_pat="**/*$ap" ;;
-            *) ap_pat="**/*$ap*" ;;
-        esac
+        if [ $basename_only -eq 1 ]; then
+            case $match_mode in
+                1) ap_pat="$ap" ;;
+                2) ap_pat="*$ap" ;;
+                *) ap_pat="*$ap*" ;;
+            esac
+        else
+            case $match_mode in
+                1) ap_pat="**/$ap" ;;
+                2) ap_pat="**/*$ap" ;;
+                *) ap_pat="**/*$ap*" ;;
+            esac
+        fi
     else
         case $match_mode in
             1) ap_pat="$ap" ;;
