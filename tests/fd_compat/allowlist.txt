@@ -1,0 +1,12 @@
+# Curated list of fd test functions to extract from `fd/tests/tests.rs`.
+# One function name per line.
+test_simple
+test_case_insensitive
+test_glob_searches
+test_full_path_glob_searches
+test_hidden
+test_no_ignore
+test_case_sensitive_glob_searches
+test_regex_overrides_glob
+test_smart_case_glob_searches
+

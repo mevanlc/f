@@ -62,14 +62,6 @@ struct Case {
     args: Vec<String>,
 }
 
-fn default_fd_tests_path() -> PathBuf {
-    if let Ok(home) = std::env::var("HOME") {
-        PathBuf::from(home).join("p/my/fd/tests/tests.rs")
-    } else {
-        PathBuf::from("tests/tests.rs")
-    }
-}
-
 fn repo_root() -> Result<PathBuf> {
     // We live in: <repo>/tests/fd_compat
     let exe = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -80,35 +72,95 @@ fn repo_root() -> Result<PathBuf> {
     Ok(root.to_path_buf())
 }
 
-fn default_allowlist() -> BTreeSet<String> {
-    [
-        // These are either (a) `--glob` focused, or (b) simple regex cases, and
-        // they fit the `tests/fixtures/fd_default` tree.
-        "test_simple",
-        "test_case_insensitive",
-        "test_glob_searches",
-        "test_full_path_glob_searches",
-        "test_hidden",
-        "test_no_ignore",
-        "test_case_sensitive_glob_searches",
-        "test_regex_overrides_glob",
-        "test_smart_case_glob_searches",
-    ]
-    .into_iter()
-    .map(|s| s.to_string())
-    .collect()
+fn guess_fd_tests_path(root: &Path) -> PathBuf {
+    // Try "sibling repo" layout first: <root>/../fd/tests/tests.rs
+    let sibling = root.join("../fd/tests/tests.rs");
+    if sibling.is_file() {
+        return sibling;
+    }
+
+    // Then a local default.
+    if let Ok(home) = std::env::var("HOME") {
+        let p = PathBuf::from(home).join("p/my/fd/tests/tests.rs");
+        if p.is_file() {
+            return p;
+        }
+    }
+
+    // Finally: relative path for running inside fd itself.
+    PathBuf::from("tests/tests.rs")
 }
 
-fn parse_allowlist(s: Option<String>) -> BTreeSet<String> {
-    match s {
-        None => default_allowlist(),
-        Some(s) => s
-            .split(',')
-            .map(|p| p.trim())
-            .filter(|p| !p.is_empty())
-            .map(|p| p.to_string())
-            .collect(),
+fn default_allowlist_from_file() -> Option<BTreeSet<String>> {
+    let p = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("allowlist.txt");
+    let content = fs::read_to_string(p).ok()?;
+    let mut out = BTreeSet::new();
+    for line in content.lines() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        out.insert(line.to_string());
     }
+    if out.is_empty() { None } else { Some(out) }
+}
+
+fn default_allowlist() -> BTreeSet<String> {
+    default_allowlist_from_file().unwrap_or_else(|| {
+        [
+            // These are either (a) `--glob` focused, or (b) simple regex cases, and
+            // they fit the `tests/fixtures/fd_default` tree.
+            "test_simple",
+            "test_case_insensitive",
+            "test_glob_searches",
+            "test_full_path_glob_searches",
+            "test_hidden",
+            "test_no_ignore",
+            "test_case_sensitive_glob_searches",
+            "test_regex_overrides_glob",
+            "test_smart_case_glob_searches",
+        ]
+        .into_iter()
+        .map(|s| s.to_string())
+        .collect()
+    })
+}
+
+fn parse_allowlist_arg(arg: Option<String>, root: &Path) -> Result<BTreeSet<String>> {
+    let Some(arg) = arg else {
+        return Ok(default_allowlist());
+    };
+
+    if let Some(path) = arg.strip_prefix('@') {
+        let path = path.trim();
+        if path.is_empty() {
+            bail!("--functions @FILE expects a file path");
+        }
+        let p = {
+            let p = PathBuf::from(path);
+            if p.is_absolute() { p } else { root.join(p) }
+        };
+        let content = fs::read_to_string(&p).with_context(|| format!("read {}", p.display()))?;
+        let mut out = BTreeSet::new();
+        for line in content.lines() {
+            let line = line.trim();
+            if line.is_empty() || line.starts_with('#') {
+                continue;
+            }
+            out.insert(line.to_string());
+        }
+        if out.is_empty() {
+            bail!("allowlist file is empty: {}", p.display());
+        }
+        return Ok(out);
+    }
+
+    Ok(arg
+        .split(',')
+        .map(|p| p.trim())
+        .filter(|p| !p.is_empty())
+        .map(|p| p.to_string())
+        .collect())
 }
 
 fn is_uppercase_sensitive(s: &str) -> bool {
@@ -517,8 +569,9 @@ fn main() -> Result<()> {
             functions,
             out,
         } => {
-            let allowlist = parse_allowlist(functions);
-            let fd_tests = fd_tests.unwrap_or_else(default_fd_tests_path);
+            let root = repo_root()?;
+            let allowlist = parse_allowlist_arg(functions, &root)?;
+            let fd_tests = fd_tests.unwrap_or_else(|| guess_fd_tests_path(&root));
             let (cases, skipped) = extract_cases(&fd_tests, &allowlist)?;
 
             let jsonl = cases
@@ -552,10 +605,9 @@ fn main() -> Result<()> {
             fixture,
             functions,
         } => {
-            let allowlist = parse_allowlist(functions);
-            let fd_tests = fd_tests.unwrap_or_else(default_fd_tests_path);
-
             let root = repo_root()?;
+            let allowlist = parse_allowlist_arg(functions, &root)?;
+            let fd_tests = fd_tests.unwrap_or_else(|| guess_fd_tests_path(&root));
             let fixture = fixture.unwrap_or_else(|| root.join("tests/fixtures/fd_default"));
             let f_path = f.unwrap_or_else(|| root.join("f"));
 
